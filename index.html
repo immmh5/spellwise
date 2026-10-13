@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Spellwise — Train your ear, master English spelling. Lessons, dictation drills, an interactive sound-to-spelling map, an AI tutor, and full progress tracking." />
+  <meta name="theme-color" content="#0b0d18" />
+  <title>Spellwise — Master English Spelling</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Gentium+Plus:ital@0;1&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <div id="app">
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand" data-nav="dashboard" role="button" tabindex="0">
+        <div class="brand-mark">S<span class="brand-dot"></span></div>
+        <div class="brand-text">
+          <span class="brand-name">Spellwise</span>
+          <span class="brand-sub">hear it · spell it</span>
+        </div>
+      </div>
+
+      <nav class="nav" id="mainNav" aria-label="Main navigation"></nav>
+
+      <div class="side-foot">
+        <div class="side-card" id="sideStreakCard">
+          <div class="side-card-top">
+            <span class="side-ico">🔥</span>
+            <span id="sideStreakDays">0</span><span class="side-small">day streak</span>
+          </div>
+          <div class="streak-strip" id="sideStreakStrip"></div>
+        </div>
+        <button class="side-btn" data-nav="settings">⚙️ Settings</button>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+        <div class="topbar-title" id="topbarTitle">Dashboard</div>
+        <div class="topbar-stats">
+          <div class="tstat xp" id="topXp" title="Experience points">⭐ <b>0</b></div>
+          <div class="tstat" id="topStreak" title="Day streak">🔥 <b>0</b></div>
+          <button class="tstat tstat-btn" id="topSound" title="Toggle sound" aria-pressed="true">🔊</button>
+        </div>
+      </header>
+      <main id="view" class="view" tabindex="-1"></main>
+    </div>
+
+    <!-- ============ BOTTOM NAV (mobile) ============ -->
+    <nav class="bottomnav" id="bottomNav" aria-label="Main navigation (mobile)"></nav>
+  </div>
+
+  <!-- ============ TUTOR BOT ============ -->
+  <button class="bot-fab" id="botFab" aria-label="Open tutor">
+    <span class="bot-fab-ico">🧠</span>
+    <span class="bot-fab-ping"></span>
+    <span class="bot-fab-badge" id="botBadge" hidden>1</span>
+  </button>
+
+  <section class="bot-panel" id="botPanel" aria-label="Tutor chat" aria-hidden="true">
+    <div class="bot-head">
+      <div class="bot-avatar">🧠</div>
+      <div class="bot-headinfo">
+        <b>Lex</b><span id="botStatus">Spelling tutor · online</span>
+      </div>
+      <button class="icon-btn" id="botTtsToggle" title="Read replies aloud">🗣️</button>
+      <button class="icon-btn" id="botMin" title="Close">✕</button>
+    </div>
+    <div class="bot-chips" id="botChips"></div>
+    <div class="bot-body" id="botBody" aria-live="polite"></div>
+    <div class="bot-err" id="botErr" hidden></div>
+    <form class="bot-input" id="botForm">
+      <button type="button" class="icon-btn mic-btn" id="botMic" title="Speak (voice input)">🎙️</button>
+      <input type="text" id="botText" placeholder="Ask Lex anything about spelling…" autocomplete="off" aria-label="Message" />
+      <button class="send-btn" type="submit" aria-label="Send">➤</button>
+    </form>
+  </section>
+
+  <div id="toastWrap" class="toast-wrap" aria-live="polite"></div>
+  <div id="modalRoot"></div>
+  <div id="confettiRoot" class="confetti-root" aria-hidden="true"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/speech.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
