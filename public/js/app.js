@@ -1031,6 +1031,15 @@
             (w) => `<button class="chip word-chip" data-word="${w}">${w}</button>`
           ).join("")}</div>
         </section>
+        <section class="panel wi-panel">
+          <h2 class="panel-title">🎓 Write &amp; Improve</h2>
+          <p class="muted">Cambridge's free tool grades your text against CEFR levels (A1–C2) in seconds. Spellwise coaches your <b>spelling</b>; Write &amp; Improve grades the <b>whole piece</b>.</p>
+          <div class="btn-row">
+            <button class="btn primary" id="wiOpen">🚀 Grade on Write &amp; Improve</button>
+            <button class="btn ghost" id="wiCopy">📋 Copy my text</button>
+          </div>
+          <p class="muted wi-note" id="wiNote">Tip: pick a task, paste your text, and hit <b>Check</b>. Work on the red-marked words back here in the Sound Map.</p>
+        </section>
       </aside>
     </div>`;
   }
@@ -1073,6 +1082,33 @@
     });
     const check = $("#writeCheck");
     if (check) check.addEventListener("click", coachWriting);
+
+    // Write & Improve integration: hand the text to Cambridge's grader.
+    const wiCopy = $("#wiCopy");
+    if (wiCopy) wiCopy.addEventListener("click", async () => {
+      const t = (area.value || "").trim();
+      const note = $("#wiNote");
+      if (!t) { toast("Write something first, then copy it.", "✍️"); return; }
+      let done = false;
+      try {
+        await navigator.clipboard.writeText(t);
+        done = true;
+      } catch (e) {
+        area.select();
+        try { done = document.execCommand("copy"); } catch (e2) { done = false; }
+      }
+      if (note) note.innerHTML = done
+        ? "✅ <b>Text copied.</b> Now open Write &amp; Improve and paste it into any task."
+        : "Copy failed — select your text manually and press Ctrl/⌘+C.";
+      toast(done ? "Copied — ready to paste" : "Copy failed", done ? "📋" : "⚠️");
+    });
+    const wiOpen = $("#wiOpen");
+    if (wiOpen) wiOpen.addEventListener("click", () => {
+      gain(4, "Sent writing to Write & Improve", { silent: true });
+      S.store.log("Opened <b>Write &amp; Improve</b> 🎓", "info");
+      S.store.save();
+      window.open("https://writeandimprove.com/", "_blank", "noopener,noreferrer");
+    });
   }
 
   function coachWriting() {

@@ -1133,6 +1133,8 @@ input[type="range"]::-moz-range-thumb {
 .write-feedback { margin-top: 14px; display: flex; flex-direction: column; gap: 11px; }
 .write-side { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 16px; }
 .write-side .panel { margin-bottom: 0; }
+.wi-panel { border: 1px dashed var(--accent, #6c5ce7); }
+.wi-note { margin-top: 10px; font-size: 0.85rem; line-height: 1.5; }
 
 /* ============================================================
    PROGRESS
