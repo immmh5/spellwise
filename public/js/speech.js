@@ -108,7 +108,7 @@
       r.interimResults = false;
       r.maxAlternatives = 3;
       let settled = false;
-      const done = (fn) => {
+      let done = (fn) => {
         if (!settled) {
           settled = true;
           listening = false;
