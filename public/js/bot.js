@@ -113,7 +113,7 @@
       return j.choices[0].message.content;
     }
     // Google Gemini
-    const model = st.llmModel || "gemini-1.5-flash";
+    const model = st.llmModel || "gemini-3.5-flash-lite";
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(st.llmKey)}`,
       {
@@ -126,7 +126,14 @@
         }),
       }
     );
-    if (!res.ok) throw new Error("Gemini error " + res.status);
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const ej = await res.json();
+        detail = (ej.error && (ej.error.message || ej.error.status)) ? " — " + (ej.error.message || ej.error.status) : "";
+      } catch (e) {}
+      throw new Error("Gemini error " + res.status + detail);
+    }
     const j = await res.json();
     const out = j.candidates && j.candidates[0] && j.candidates[0].content;
     return out && out.parts && out.parts[0] ? out.parts[0].text : "<i>No reply.</i>";

@@ -39,25 +39,37 @@
   }
 
   /* ---------------- TTS ---------------- */
+  // Chrome's speechSynthesis is buggy: it silently stops after ~15s and
+  // voices load asynchronously. Both are handled here.
   function say(text, opts) {
     opts = opts || {};
+    text = String(text || "");
     return new Promise((resolve) => {
       if (S.muted === true) { resolve(false); return; }
-      if (!synth || !chosenVoice) {
-        // No speech synthesis available → fall back to dictionary audio if we can
-        resolve(false);
-        return;
-      }
+      if (!synth) { resolve(false); return; }
+      // Voices load late on Chrome/Android — refresh on every call so the
+      // first taps after page load are not silent.
+      if (!chosenVoice) refreshVoices();
       try {
         synth.cancel();
         const u = new SpeechSynthesisUtterance(text);
-        u.voice = chosenVoice;
-        u.lang = chosenVoice.lang || "en-GB";
+        if (chosenVoice) {
+          u.voice = chosenVoice;
+          u.lang = chosenVoice.lang || "en-GB";
+        } else {
+          u.lang = "en-GB";
+        }
         u.rate = opts.rate != null ? opts.rate : S.store.state.settings.voiceRate;
         u.pitch = opts.pitch != null ? opts.pitch : S.store.state.settings.voicePitch;
-        u.onend = () => resolve(true);
-        u.onerror = () => resolve(false);
+        let settled = false;
+        const done = (v) => { if (!settled) { settled = true; clearInterval(kick); resolve(v); } };
+        // Chrome bug: long utterances freeze. Prodding resume() keeps them alive.
+        const kick = setInterval(() => { try { synth.pause(); synth.resume(); } catch (e) {} }, 12000);
+        u.onend = () => done(true);
+        u.onerror = () => done(false);
         synth.speak(u);
+        // Safety net: if onend/onerror never fire, resolve anyway.
+        setTimeout(() => done(true), Math.max(2500, text.length * 110));
       } catch (e) {
         resolve(false);
       }
@@ -114,6 +126,15 @@
           ? "Microphone access was blocked. Please allow it in your browser settings."
           : "Could not hear you clearly. Try again or type the word.")));
       r.onend = () => done(() => resolve({ transcript: "", alternatives: [] }));
+      // Safety net: some browsers start the recognizer but never fire
+      // onend/onerror (permission prompt dismissed, no mic). Resolve so the
+      // drill never freezes waiting for a sound that never comes.
+      const watchdog = setTimeout(
+        () => done(() => resolve({ transcript: "", alternatives: [] })),
+        opts.timeout || 9000
+      );
+      const origDone = done;
+      done = (fn) => { clearTimeout(watchdog); origDone(fn); };
       try {
         listening = true;
         r.start();
@@ -169,17 +190,56 @@
   }
 
   // Play a real human recording if we have one, else TTS.
+  // The dictionary API can be slow or unreachable in some regions; when it
+  // is, we must not make the user stare at a silent screen for 4s.
+  let dictBroken = false;
   async function sayHuman(word, opts) {
     if (S.muted === true) return { human: false, info: null };
-    const info = await lookup(word);
-    if (info && info.audio) {
+    let info = null;
+    if (!dictBroken) {
       try {
-        const audio = new Audio(info.audio);
-        await audio.play();
-        return { human: true, info };
-      } catch (e) {
-        /* fall through to TTS */
+        info = await Promise.race([
+          lookup(word),
+          new Promise((r) => setTimeout(() => r("TIMEOUT"), 1200)),
+        ]);
+      } catch (e) { info = null; }
+      if (info === "TIMEOUT") {
+        // Network is too slow — go straight to TTS now, and skip the
+        // dictionary entirely for the next little while.
+        dictBroken = true;
+        setTimeout(() => { dictBroken = false; }, 60000);
+        info = null;
       }
+    }
+    if (info && info.audio) {
+      // Stop any pending TTS so the two never talk over each other.
+      try { if (synth) synth.cancel(); } catch (e) {}
+      let played = false;
+      for (let attempt = 0; attempt < 2 && !played; attempt++) {
+        try {
+          const audio = new Audio(info.audio);
+          audio.preload = "auto";
+          audio.crossOrigin = "anonymous";
+          // Mobile browsers reject play() unless it follows a user gesture;
+          // the error is recoverable, so retry once after a short wait.
+          await audio.play();
+          // Network can stall mid-stream and fire neither onended nor
+          // onerror — bail to TTS instead of hanging the drill forever.
+          played = await new Promise((res) => {
+            const stall = setTimeout(
+              () => { try { audio.pause(); } catch (e) {} res(false); },
+              6000
+            );
+            audio.onended = () => { clearTimeout(stall); res(true); };
+            audio.onerror = () => { clearTimeout(stall); res(false); };
+          });
+        } catch (e) {
+          if (attempt === 1) break;
+          await new Promise((r) => setTimeout(r, 250));
+        }
+      }
+      if (played) return { human: true, info };
+      /* fell through → TTS below */
     }
     await say(word, opts);
     return { human: false, info };

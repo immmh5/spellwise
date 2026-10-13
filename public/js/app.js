@@ -1306,6 +1306,7 @@
     <section class="panel">
       <h2 class="panel-title">🧠 AI tutor (optional)</h2>
       <p class="muted">By default Lex runs on a built-in rule brain — free, private and instant. Add a Google Gemini or OpenAI key to unlock deeper explanations and paragraph-level writing feedback. The key is stored only in this browser.</p>
+      <p class="muted"><b>This is for the chat tutor only — it has nothing to do with sound.</b> Sound always works without any key.</p>
       <div class="setting-row">
         <label for="setUseLLM">Use LLM brain</label>
         <input type="checkbox" id="setUseLLM" ${st.useLLM ? "checked" : ""} class="switch" />
@@ -1323,7 +1324,7 @@
       </div>
       <div class="setting-row">
         <label for="setModel">Model <span class="muted">(optional)</span></label>
-        <input type="text" id="setModel" class="input" placeholder="${st.llmProvider === "openai" ? "gpt-4o-mini" : "gemini-1.5-flash"}" value="${esc(st.llmModel)}" />
+        <input type="text" id="setModel" class="input" placeholder="${st.llmProvider === "openai" ? "gpt-4o-mini" : "gemini-3.5-flash-lite"}" value="${esc(st.llmModel)}" />
       </div>
       <div class="btn-row"><button class="btn sm" id="testLLM">Test connection</button></div>
       <p class="muted" id="llmTestResult"></p>
@@ -1331,10 +1332,13 @@
 
     <section class="panel">
       <h2 class="panel-title">🔊 Audio</h2>
+      <p class="muted">Sound uses your browser's built-in speech engine — <b>no API key needed</b>. If you hear nothing, check the toggle below and raise your device volume.</p>
       <div class="setting-row">
         <label for="setMuted">App sound effects & speech</label>
         <input type="checkbox" id="setMuted" ${S.muted ? "checked" : ""} class="switch" />
       </div>
+      <div class="btn-row"><button class="btn sm" id="diagSound">🩺 Diagnose sound</button></div>
+      <p class="muted" id="soundDiagResult"></p>
     </section>
 
     <section class="panel">
@@ -1370,6 +1374,36 @@
     });
     const test = $("#testVoice");
     if (test) test.addEventListener("click", () => S.speech.say("Spellwise. Hear it, spell it, right first time."));
+    const diag = $("#diagSound");
+    if (diag)
+      diag.addEventListener("click", async () => {
+        const out = $("#soundDiagResult");
+        const lines = [];
+        const ok = (m) => lines.push("✅ " + m);
+        const no = (m) => lines.push("❌ " + m);
+        if (S.muted) no("Sound is muted — untick “App sound effects & speech” above.");
+        else ok("Sound is not muted.");
+        const v = S.speech.listVoices();
+        if (!v.length)
+          no("Your browser reported zero voices. Try Chrome or Edge; on some phones only the dictionary recordings will play.");
+        else ok(v.length + " voices available (default: " + (S.speech.voice ? S.speech.voice.name : "auto") + ").");
+        try {
+          const r = await S.speech.say("Testing one two three.");
+          if (r) ok("Speech synth accepted the text — you should have heard “Testing one two three.”");
+          else no("Speech synth rejected the text. Check device volume / silent switch.");
+        } catch (e) {
+          no("Speech synth error: " + e.message);
+        }
+        try {
+          const info = await S.speech.lookup("necessary");
+          if (info && info.audio)
+            ok("Dictionary recordings reachable — real human audio will be used.");
+          else no("Dictionary API unreachable from your network — drills will use the browser voice instead.");
+        } catch (e) {
+          no("Dictionary API unreachable — drills will use the browser voice instead.");
+        }
+        out.innerHTML = lines.map((l) => esc(l)).join("<br>");
+      });
     bind("#setUseLLM", (e) => { st.useLLM = e.target.checked; S.store.save(); });
     bind("#setProvider", (e) => { st.llmProvider = e.target.value; S.store.save(); });
     bind("#setKey", (e) => { st.llmKey = e.target.value.trim(); S.store.save(); });
@@ -1594,6 +1628,8 @@
   $("#menuBtn").addEventListener("click", () => document.body.classList.toggle("nav-open"));
   $("#topSound").addEventListener("click", () => {
     S.muted = !S.muted;
+    S.store.state.settings.muted = S.muted;
+    S.store.save();
     renderTop();
     toast(S.muted ? "Sound muted" : "Sound on", S.muted ? "🔇" : "🔊");
   });
